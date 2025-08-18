@@ -1,0 +1,23 @@
+name: router
+
+services:
+  postgres:
+    image: postgres
+    container_name: router-postgres
+    environment:
+      POSTGRES_DB: router
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - router_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  router_postgres_data:
