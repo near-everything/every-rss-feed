@@ -1,30 +1,27 @@
 import { Feed } from "@/components/feed";
-import { trpc, useTRPC } from "@/utils/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_layout/$feedId/")({
   component: FeedPage,
-  loader: async () => {
-  }
+  loader: async ({ context, params }) => {
+    const queryOptions = context.trpc.getFeed.queryOptions(params);
+    return context.queryClient.ensureQueryData(queryOptions);
+  },
 });
 
 function FeedPage() {
   const { feedId } = Route.useParams();
-  const trpc = useTRPC();
-  const {
-    data: feedData,
-    isLoading,
-    error,
-  } = useQuery(trpc.getFeed.queryOptions({ feedId }));
+  const { trpc } = Route.useRouteContext();
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">Loading RSS feed...</div>
-      </div>
-    );
-  }
+  const initialData = Route.useLoaderData();
+
+  const queryOptions = trpc.getFeed.queryOptions({ feedId });
+
+  const { data, error } = useQuery({
+    ...queryOptions,
+    initialData: initialData,
+  });
 
   if (error) {
     return (
@@ -36,7 +33,7 @@ function FeedPage() {
     );
   }
 
-  if (!feedData) {
+  if (!data) {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center">No feed data available</div>
@@ -44,5 +41,5 @@ function FeedPage() {
     );
   }
 
-  return <Feed data={feedData} />;
+  return <Feed data={data} />;
 }

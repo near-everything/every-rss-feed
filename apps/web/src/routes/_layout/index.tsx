@@ -1,22 +1,25 @@
-import { useTRPC } from "@/utils/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_layout/")({
   component: HomeComponent,
+  loader: async ({ context }) => {
+    const queryOptions = context.trpc.getFeeds.queryOptions();
+    return context.queryClient.ensureQueryData(queryOptions);
+  },
 });
 
 function HomeComponent() {
-  const trpc = useTRPC();
-  const { data: feedsData, isLoading, error } = useQuery(trpc.getFeeds.queryOptions());
+  const { trpc } = Route.useRouteContext();
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">Loading feeds...</div>
-      </div>
-    );
-  }
+  const initialData = Route.useLoaderData();
+
+  const queryOptions = trpc.getFeeds.queryOptions();
+
+  const { data: feedsData, error } = useQuery({
+    ...queryOptions,
+    initialData: initialData,
+  });
 
   if (error) {
     return (

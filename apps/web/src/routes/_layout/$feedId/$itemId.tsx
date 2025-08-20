@@ -1,45 +1,45 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from "@tanstack/react-query";
-import { useTRPC } from "@/utils/trpc";
 import { Author } from "@/components/feed/author";
 import { Categories } from "@/components/feed/category";
 import { Enclosure } from "@/components/feed/enclosure";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/_layout/$feedId/$itemId')({
+export const Route = createFileRoute("/_layout/$feedId/$itemId")({
   component: ItemPage,
-})
+  loader: async ({ context, params }) => {
+    const queryOptions = context.trpc.getFeedItem.queryOptions(params);
+    return context.queryClient.ensureQueryData(queryOptions);
+  },
+});
 
 function ItemPage() {
   const { feedId, itemId } = Route.useParams();
-  const trpc = useTRPC();
-  
-  const { data, isLoading, error } = useQuery(
-    trpc.getFeedItem.queryOptions({ feedId, itemId })
-  );
+  const { trpc } = Route.useRouteContext();
+
+  const initialData = Route.useLoaderData();
+
+  const queryOptions = trpc.getFeedItem.queryOptions({ feedId, itemId });
+
+  const { data, error } = useQuery({
+    ...queryOptions,
+    initialData: initialData,
+  });
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date);
   };
 
   const getImageUrl = (image: string | { url: string } | undefined) => {
     if (!image) return null;
-    return typeof image === 'string' ? image : image.url;
+    return typeof image === "string" ? image : image.url;
   };
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">Loading article...</div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -55,7 +55,9 @@ function ItemPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Article Not Found</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Article Not Found
+          </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             The article you're looking for could not be found.
           </p>
@@ -82,8 +84,8 @@ function ItemPage() {
             Home
           </Link>
           <span>/</span>
-          <Link 
-            to="/$feedId" 
+          <Link
+            to="/$feedId"
             params={{ feedId }}
             className="hover:text-blue-600 dark:hover:text-blue-400"
           >
@@ -118,9 +120,7 @@ function ItemPage() {
             {item.author && item.author[0] && (
               <Author author={item.author[0]} />
             )}
-            <time dateTime={item.date}>
-              {formatDate(item.date)}
-            </time>
+            <time dateTime={item.date}>{formatDate(item.date)}</time>
             {item.published && (
               <span>Published: {formatDate(item.published)}</span>
             )}
@@ -145,7 +145,7 @@ function ItemPage() {
           {/* Content */}
           {item.content && (
             <div className="mb-8">
-              <div 
+              <div
                 className="prose prose-lg dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: item.content }}
               />
@@ -155,20 +155,26 @@ function ItemPage() {
           {/* Media */}
           <div className="space-y-4 mb-8">
             {item.audio && (
-              <Enclosure 
-                enclosure={typeof item.audio === 'string' ? { url: item.audio } : item.audio} 
-                type="audio" 
+              <Enclosure
+                enclosure={
+                  typeof item.audio === "string"
+                    ? { url: item.audio }
+                    : item.audio
+                }
+                type="audio"
               />
             )}
             {item.video && (
-              <Enclosure 
-                enclosure={typeof item.video === 'string' ? { url: item.video } : item.video} 
-                type="video" 
+              <Enclosure
+                enclosure={
+                  typeof item.video === "string"
+                    ? { url: item.video }
+                    : item.video
+                }
+                type="video"
               />
             )}
-            {item.enclosure && (
-              <Enclosure enclosure={item.enclosure} />
-            )}
+            {item.enclosure && <Enclosure enclosure={item.enclosure} />}
           </div>
 
           {/* Actions */}
@@ -180,8 +186,18 @@ function ItemPage() {
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
             >
               Read Original Article
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
               </svg>
             </a>
             <Link
@@ -189,8 +205,18 @@ function ItemPage() {
               params={{ feedId }}
               className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium rounded-lg transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
               Back to Feed
             </Link>
