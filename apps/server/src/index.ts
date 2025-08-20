@@ -1,11 +1,13 @@
-import "dotenv/config";
 import { trpcServer } from "@hono/trpc-server";
-import { createContext } from "./lib/context";
-import { appRouter } from "./routers/index";
-import { auth } from "./lib/auth";
+import "dotenv/config";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { auth } from "./lib/auth";
+import { createContext } from "./lib/context";
+import { appRouter } from "./routers";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import { db } from "./db";
 
 const app = new Hono();
 
@@ -32,8 +34,14 @@ app.use(
   })
 );
 
-app.get("/", (c) => {
-  return c.text("OK");
-});
+try {
+  console.log("Migrating database...");
+  migrate(db, {
+    migrationsFolder: `${process.cwd()}/migrations`,
+  });
+} catch (error) {
+  console.error(error);
+}
+
 
 export default app;

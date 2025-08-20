@@ -1,139 +1,179 @@
 import { authClient } from "@/lib/auth-client";
-import { useForm } from "@tanstack/react-form";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useState } from "react";
 import { toast } from "sonner";
-import z from "zod";
 import Loader from "./loader";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 
-export default function SignInForm({
-	onSwitchToSignUp,
-}: {
-	onSwitchToSignUp: () => void;
-}) {
-	const navigate = useNavigate({
-		from: "/",
-	});
-	const { isPending } = authClient.useSession();
+export default function SignInForm() {
+  const navigate = useNavigate({
+    from: "/",
+  });
+  const search = useSearch({ from: "/login" });
+  const { isPending } = authClient.useSession();
+  const [isConnectingWallet, setIsConnectingWallet] = useState(false);
+  const [isSigningInWithNear, setIsSigningInWithNear] = useState(false);
+  const [isDisconnectingWallet, setIsDisconnectingWallet] = useState(false);
 
-	const form = useForm({
-		defaultValues: {
-			email: "",
-			password: "",
-		},
-		onSubmit: async ({ value }) => {
-			await authClient.signIn.email(
-				{
-					email: value.email,
-					password: value.password,
-				},
-				{
-					onSuccess: () => {
-						navigate({
-							to: "/dashboard",
-						});
-						toast.success("Sign in successful");
-					},
-					onError: (error) => {
-						toast.error(error.error.message || error.error.statusText);
-					},
-				},
-			);
-		},
-		validators: {
-			onSubmit: z.object({
-				email: z.email("Invalid email address"),
-				password: z.string().min(8, "Password must be at least 8 characters"),
-			}),
-		},
-	});
+  // Check wallet connection status
+  const accountId =
+    (typeof window !== "undefined" && window.near?.accountId()) || null;
 
-	if (isPending) {
-		return <Loader />;
-	}
+  const handleWalletConnect = async () => {
+    setIsConnectingWallet(true);
 
-	return (
-		<div className="mx-auto w-full mt-10 max-w-md p-6">
-			<h1 className="mb-6 text-center text-3xl font-bold">Welcome Back</h1>
+    try {
+      if (!window.near) {
+        throw new Error(
+          "NEAR wallet not available. Please make sure you have a NEAR wallet installed or refresh the page."
+        );
+      }
 
-			<form
-				onSubmit={(e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					form.handleSubmit();
-				}}
-				className="space-y-4"
-			>
-				<div>
-					<form.Field name="email">
-						{(field) => (
-							<div className="space-y-2">
-								<Label htmlFor={field.name}>Email</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="email"
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-								/>
-								{field.state.meta.errors.map((error) => (
-									<p key={error?.message} className="text-red-500">
-										{error?.message}
-									</p>
-								))}
-							</div>
-						)}
-					</form.Field>
-				</div>
+      await window.near.requestSignIn(
+        {
+          contractId: "social.near",
+        },
+        {
+          onSuccess: (result: any) => {
+            toast.success(`Wallet connected: ${result.accountId}`);
+            setIsConnectingWallet(false);
+          },
+          onError: (error: any) => {
+            console.error("Wallet connection failed:", error);
+            toast.error(
+              error.type === "popup_blocked"
+                ? "Please allow popups and try again"
+                : "Failed to connect wallet"
+            );
+            setIsConnectingWallet(false);
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Wallet connection error:", error);
+      toast.error("Failed to connect to NEAR wallet");
+      setIsConnectingWallet(false);
+    }
+  };
 
-				<div>
-					<form.Field name="password">
-						{(field) => (
-							<div className="space-y-2">
-								<Label htmlFor={field.name}>Password</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="password"
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-								/>
-								{field.state.meta.errors.map((error) => (
-									<p key={error?.message} className="text-red-500">
-										{error?.message}
-									</p>
-								))}
-							</div>
-						)}
-					</form.Field>
-				</div>
+  const handleNearSignIn = async () => {
+    setIsSigningInWithNear(true);
 
-				<form.Subscribe>
-					{(state) => (
-						<Button
-							type="submit"
-							className="w-full"
-							disabled={!state.canSubmit || state.isSubmitting}
-						>
-							{state.isSubmitting ? "Submitting..." : "Sign In"}
-						</Button>
-					)}
-				</form.Subscribe>
-			</form>
+    await authClient.signIn.near(
+      {
+        recipient: "curate-news-feed.near",
+        signer: window.near!,
+      },
+      {
+        onSuccess: () => {
+          setIsSigningInWithNear(false);
+          navigate({
+            to: search.redirect || "/dashboard",
+            replace: true,
+          });
+          toast.success(`Signed in as: ${accountId}`);
+        },
+        onError: (error) => {
+          setIsSigningInWithNear(false);
+          console.error("NEAR sign in error:", error);
+          toast.error(
+            error instanceof Error ? error.message : "Authentication failed"
+          );
+        },
+      }
+    );
+  };
 
-			<div className="mt-4 text-center">
-				<Button
-					variant="link"
-					onClick={onSwitchToSignUp}
-					className="text-indigo-600 hover:text-indigo-800"
-				>
-					Need an account? Sign Up
-				</Button>
-			</div>
-		</div>
-	);
+  const handleWalletDisconnect = async () => {
+    setIsDisconnectingWallet(true);
+
+    try {
+      // Sign out from auth session first
+      await authClient.signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            console.log("Auth session cleared");
+          },
+          onError: (error) => {
+            console.error("Failed to clear auth session:", error);
+          },
+        },
+      });
+
+      // Then disconnect wallet
+      if (window.near?.signOut) {
+        await window.near.signOut();
+        toast.success("Wallet disconnected successfully");
+      } else {
+        toast.error("Unable to disconnect wallet");
+      }
+    } catch (error) {
+      console.error("Wallet disconnect error:", error);
+      toast.error("Failed to disconnect wallet");
+    } finally {
+      setIsDisconnectingWallet(false);
+    }
+  };
+
+  if (isPending) {
+    return <Loader />;
+  }
+
+  return (
+    <div className="w-full max-w-lg mx-auto">
+      <div className="bg-card border rounded-lg shadow-sm p-6 sm:p-8">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-3 sm:mb-4">Sign in with NEAR</h1>
+          <p className="text-base sm:text-lg text-muted-foreground">
+            Connect your NEAR wallet to authenticate securely
+          </p>
+        </div>
+
+        <div className="space-y-3 sm:space-y-4">
+          {!accountId ? (
+            <Button
+              type="button"
+              className="w-full h-12 sm:h-14 text-base sm:text-lg font-medium touch-manipulation"
+              onClick={handleWalletConnect}
+              disabled={isConnectingWallet}
+            >
+              {isConnectingWallet
+                ? "Connecting Wallet..."
+                : "Connect NEAR Wallet"}
+            </Button>
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
+              <Button
+                type="button"
+                className="w-full h-12 sm:h-14 text-base sm:text-lg font-medium touch-manipulation"
+                onClick={handleNearSignIn}
+                disabled={isSigningInWithNear}
+              >
+                {isSigningInWithNear
+                  ? "Signing in..."
+                  : `Sign in with NEAR (${accountId})`}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-12 sm:h-14 text-base sm:text-lg font-medium touch-manipulation"
+                onClick={handleWalletDisconnect}
+                disabled={isDisconnectingWallet}
+              >
+                {isDisconnectingWallet
+                  ? "Disconnecting..."
+                  : "Disconnect Wallet"}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 sm:mt-8 text-center">
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            This demo uses fastintear for wallet connectivity.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }

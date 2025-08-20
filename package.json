@@ -1,5 +1,5 @@
 {
-  "name": "router",
+  "name": "curate-news-feeds",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -9,21 +9,17 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "check-types": "turbo check-types",
+    "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
-    "dev:www": "turbo -F www dev",
     "dev:server": "turbo -F server dev",
     "db:push": "turbo -F server db:push",
     "db:studio": "turbo -F server db:studio",
     "db:generate": "turbo -F server db:generate",
-    "db:migrate": "turbo -F server db:migrate",
-    "db:start": "turbo -F server db:start",
-    "db:watch": "turbo -F server db:watch",
-    "db:stop": "turbo -F server db:stop",
-    "db:down": "turbo -F server db:down"
+    "db:migrate": "turbo -F server db:migrate"
   },
   "dependencies": {},
   "devDependencies": {
-    "turbo": "^2.5.6"
+    "turbo": "^2.5.4"
   },
-  "packageManager": "bun@1.2.20"
+  "packageManager": "bun@1.2.19"
 }

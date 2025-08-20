@@ -1,17 +1,17 @@
-name: router
+name: curate-news-feed
 
 services:
   postgres:
     image: postgres
-    container_name: router-postgres
+    container_name: curate-news-feed-postgres
     environment:
-      POSTGRES_DB: router
+      POSTGRES_DB: curate-news-feed
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
-      - router_postgres_data:/var/lib/postgresql/data
+      - curate-news-feed_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -20,4 +20,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  router_postgres_data:
+  curate-news-feed_postgres_data:

@@ -2,9 +2,6 @@ import Header from "@/components/header";
 import Loader from "@/components/loader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import type { trpc } from "@/utils/trpc";
-import type { QueryClient } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   HeadContent,
   Outlet,
@@ -14,27 +11,42 @@ import {
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import "../index.css";
 
-export interface RouterAppContext {
-  trpc: typeof trpc;
-  queryClient: QueryClient;
-}
+export interface RouterAppContext {}
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootComponent,
   head: () => ({
     meta: [
       {
-        title: "router",
+        title: "browser-2-server",
       },
       {
         name: "description",
-        content: "router is a web application",
+        content: "browser-2-server is a web application",
       },
     ],
     links: [
       {
         rel: "icon",
         href: "/favicon.ico",
+      },
+    ],
+    scripts: [
+      {
+        src: "https://unpkg.com/fastintear@latest/dist/umd/browser.global.js",
+        type: "text/javascript",
+      },
+      {
+        children: `
+      window.near && window.near.config({ networkId: "mainnet" });
+      
+      if (typeof window.near !== "undefined") {
+        console.log("NEAR (via global object 'near') is ready!");
+      } else {
+        console.error("NEAR global object 'near' not found!");
+      }
+    `,
+        type: "text/javascript",
       },
     ],
   }),
@@ -45,7 +57,6 @@ function RootComponent() {
     select: (s) => s.isLoading,
   });
 
-
   return (
     <>
       <HeadContent />
@@ -55,14 +66,12 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="vite-ui-theme"
       >
-        <div className="grid grid-rows-[auto_1fr] h-svh">
-          <Header />
+        <div className="grid grid-rows-[auto_1fr] h-svh touch-manipulation">
           {isFetching ? <Loader /> : <Outlet />}
         </div>
         <Toaster richColors />
       </ThemeProvider>
       <TanStackRouterDevtools position="bottom-left" />
-      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
     </>
   );
 }
