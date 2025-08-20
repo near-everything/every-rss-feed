@@ -1,7 +1,7 @@
-import Header from "@/components/header";
 import Loader from "@/components/loader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import type { queryClient, trpc } from "@/utils/trpc";
 import {
   HeadContent,
   Outlet,
@@ -11,18 +11,21 @@ import {
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import "../index.css";
 
-export interface RouterAppContext {}
+export interface RouterAppContext {
+  trpc: typeof trpc;
+  queryClient: typeof queryClient;
+}
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootComponent,
   head: () => ({
     meta: [
       {
-        title: "browser-2-server",
+        title: "curate-news-feed",
       },
       {
         name: "description",
-        content: "browser-2-server is a web application",
+        content: "curate-news-feed is a web application",
       },
     ],
     links: [

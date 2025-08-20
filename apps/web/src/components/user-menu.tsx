@@ -11,7 +11,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
-import { profile } from "./near-profile";
+import { NearProfile } from "./near-profile";
 
 interface Profile {
   name?: string;
@@ -27,7 +27,7 @@ interface Profile {
   linktree?: Record<string, string>;
 }
 
-export default function UserMenu() {
+export function UserMenu() {
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,7 +80,7 @@ export default function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="flex items-center space-x-2 min-h-9 touch-manipulation">
-          <profile variant="badge" showAvatar={true} showName={true} />
+          <NearProfile variant="badge" showAvatar={true} showName={true} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="bg-card w-56 mr-4">
