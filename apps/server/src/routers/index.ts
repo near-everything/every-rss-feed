@@ -5,7 +5,7 @@ import {
   protectedProcedure, publicProcedure,
   router,
 } from "../lib/trpc";
-import { Feed } from "../schemas/feed";
+import { CurrentFeedToFeed, Feed } from "../schemas/feed";
 
 const cache = new BunCache(false);
 
@@ -19,7 +19,90 @@ export const appRouter = router({
       user: ctx.session.user,
     };
   }),
-  getRssFeed: publicProcedure
+  getFeeds: publicProcedure
+    .output(Feed)
+    .query(async () => {
+      const cacheKey = 'feeds-directory';
+
+      // Check cache first
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached as string);
+      }
+
+      // Create feed directory data
+      const feedsData: Feed = {
+        items: [
+          {
+            title: "Grants Feed",
+            id: "grants",
+            link: "/grants",
+            date: new Date().toISOString(),
+            description: "Funding opportunities and grants for projects and research",
+            content: "Stay updated with the latest funding opportunities, grants, and investment news across various sectors.",
+            guid: "grants",
+          },
+          {
+            title: "USA News",
+            id: "usa", 
+            link: "/usa",
+            date: new Date().toISOString(),
+            description: "US political and economic updates",
+            content: "Comprehensive coverage of American politics, economics, and policy developments.",
+            guid: "usa",
+          },
+          {
+            title: "DeSci Feed",
+            id: "desci",
+            link: "/desci", 
+            date: new Date().toISOString(),
+            description: "Decentralized science developments and research",
+            content: "Latest developments in decentralized science, research funding, and scientific innovation.",
+            guid: "desci",
+          },
+          {
+            title: "Solana Updates",
+            id: "solana",
+            link: "/solana",
+            date: new Date().toISOString(), 
+            description: "Solana ecosystem news and developments",
+            content: "News, updates, and developments from the Solana blockchain ecosystem.",
+            guid: "solana",
+          },
+          {
+            title: "NEAR Protocol",
+            id: "near",
+            link: "/near",
+            date: new Date().toISOString(),
+            description: "NEAR blockchain updates and ecosystem news", 
+            content: "Latest updates from the NEAR Protocol blockchain and its growing ecosystem.",
+            guid: "near",
+          },
+        ],
+        options: {
+          id: "curate-feeds",
+          title: "curate.fun",
+          updated: new Date().toISOString(),
+          generator: "Curate News Feed",
+          language: "en",
+          ttl: 60,
+          link: "https://curate.fun",
+          description: "Discover curated RSS feeds across various topics and industries",
+          image: "https://app.curate.fun/curatedotfuntransparenticon.png",
+          favicon: "https://app.curate.fun/curatedotfuntransparenticon.png",
+          copyright: `© ${new Date().getFullYear()} curate.fun`,
+        },
+        categories: ["Technology", "Finance", "Science", "Blockchain", "News"],
+        contributors: [],
+        extensions: [],
+      };
+
+      // Cache for 10 minutes (600,000ms) since this is mostly static
+      cache.put(cacheKey, JSON.stringify(feedsData), 600000);
+
+      return feedsData;
+    }),
+  getFeed: publicProcedure
     .input(z.object({ feedId: z.string().optional() }).optional())
     .output(Feed)
     .query(async ({ input }) => {
@@ -40,10 +123,64 @@ export const appRouter = router({
         throw new Error(`Failed to fetch RSS feed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Cache for 5 minutes (300,000ms)
-      cache.put(cacheKey, JSON.stringify(data), 300000);
+      const transformedData = CurrentFeedToFeed.parse(data);
 
-      return data;
+      // Cache for 5 minutes (300,000ms)
+      cache.put(cacheKey, JSON.stringify(transformedData), 300000);
+
+      return transformedData;
+    }),
+  getFeedItem: publicProcedure
+    .input(z.object({ 
+      feedId: z.string(),
+      itemId: z.string()
+    }))
+    .output(z.object({
+      item: z.union([Feed.shape.items.element, z.null()]),
+      feedTitle: z.string()
+    }))
+    .query(async ({ input }) => {
+      const { feedId, itemId } = input;
+      
+      // First get the feed data
+      const feedCacheKey = `rss-feed-${feedId}`;
+      let feedData: Feed;
+      
+      const cached = cache.get(feedCacheKey);
+      if (cached) {
+        feedData = JSON.parse(cached as string);
+      } else {
+        // Fetch from RSS service
+        const url = `https://rss.curate.fun/${feedId}/feed.json`;
+        const { data, error } = await betterFetch(url);
+
+        if (error) {
+          throw new Error(`Failed to fetch RSS feed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+
+        feedData = CurrentFeedToFeed.parse(data);
+        cache.put(feedCacheKey, JSON.stringify(feedData), 300000);
+      }
+
+      // Normalize the itemId for comparison (same logic TanStack Router would use)
+      const normalizeId = (str: string) => 
+        str.toLowerCase()
+           .replace(/[^a-z0-9\s-]/g, '')
+           .replace(/\s+/g, '-')
+           .replace(/-+/g, '-')
+           .replace(/^-|-$/g, '');
+
+      const normalizedItemId = normalizeId(itemId);
+
+      // Find the item by comparing normalized titles
+      const item = feedData.items.find(item => 
+        normalizeId(item.title) === normalizedItemId
+      );
+
+      return {
+        item: item || null,
+        feedTitle: feedData.options.title
+      };
     })
 });
 

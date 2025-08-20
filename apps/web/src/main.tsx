@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import Loader from "./components/loader";
 import { routeTree } from "./routeTree.gen";
 import { queryClient, trpc, trpcClient, TRPCProvider } from "./utils/trpc";
+import NotFound from "./components/not-found";
 
 const router = createRouter({
   routeTree,
@@ -12,7 +13,7 @@ const router = createRouter({
   defaultPreload: "intent",
   context: { trpc, queryClient },
   defaultPendingComponent: () => <Loader />,
-  defaultNotFoundComponent: () => <div>Not Found</div>,
+  defaultNotFoundComponent: () => <NotFound />,
   Wrap: ({ children }) => (
     <QueryClientProvider client={queryClient}>
       <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>

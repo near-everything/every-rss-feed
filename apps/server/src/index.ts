@@ -1,13 +1,13 @@
 import { trpcServer } from "@hono/trpc-server";
 import "dotenv/config";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { db } from "./db";
 import { auth } from "./lib/auth";
 import { createContext } from "./lib/context";
 import { appRouter } from "./routers";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { db } from "./db";
 
 const app = new Hono();
 
