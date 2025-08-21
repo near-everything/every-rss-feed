@@ -1,17 +1,17 @@
-name: every-news-feed
+name: curate-news-feed
 
 services:
   postgres:
     image: postgres
-    container_name: every-news-feed-postgres
+    container_name: curate-news-feed-postgres
     environment:
-      POSTGRES_DB: every-news-feed
+      POSTGRES_DB: curate-news-feed
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
-      - every-news-feed_postgres_data:/var/lib/postgresql/data
+      - curate-news-feed_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -20,4 +20,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  every-news-feed_postgres_data:
+  curate-news-feed_postgres_data:

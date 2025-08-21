@@ -61,7 +61,7 @@ export default function SignInForm() {
 
     await authClient.signIn.near(
       {
-        recipient: "every-news-feed.near",
+        recipient: "curate-news-feed.near",
         signer: window.near!,
       },
       {
