@@ -3,6 +3,7 @@ import { Item } from "./item";
 import { Author } from "./author";
 
 interface FeedProps {
+  id: string;
   data: IFeed;
 }
 
