@@ -1,6 +1,6 @@
 # curate-news-feed
 
-This is a client app for reading RSS feeds.
+This is a client app for reading curated RSS feeds.
 
 Just FYI, there is an authenticated section and better-auth connection -- it's not gonna work if you don't run the docker and configure some .env vars, but you shouldn't need any of it rn, it'll just be convenient when we do later.
 
