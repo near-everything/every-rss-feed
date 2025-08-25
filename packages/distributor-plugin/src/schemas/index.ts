@@ -4,6 +4,7 @@ import {
   createOutputSchema,
   z,
 } from "@usersdotfun/core-sdk";
+import { FeedItem } from "../../../../apps/server/src/schemas/feed";
 
 // Config schema with variables and secrets
 export const RssConfigSchema = createConfigSchema(
@@ -18,17 +19,20 @@ export const RssConfigSchema = createConfigSchema(
   }),
 );
 
-// Input schema for social media feedback workflow
+// Input schema for add item to feed workflow
 export const RssInputSchema = createInputSchema(
   z.object({
-
+    feedId: z.string().min(1, "Feed ID is required"),
+    item: FeedItem,
   }),
 );
 
 // Output schema
 export const RssOutputSchema = createOutputSchema(
   z.object({
-
+    success: z.boolean(),
+    itemId: z.string(),
+    message: z.string().optional(),
   }),
 );
 

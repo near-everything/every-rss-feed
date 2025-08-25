@@ -4,10 +4,14 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { Effect, ManagedRuntime } from "effect";
 import { db } from "./db";
 import { auth } from "./lib/auth";
 import { createContext } from "./lib/context";
+import { RedisServiceLive } from "./lib/redis";
 import { appRouter } from "./routers";
+
+export const runtime = ManagedRuntime.make(RedisServiceLive);
 
 const app = new Hono();
 

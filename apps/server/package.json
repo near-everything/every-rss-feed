@@ -23,6 +23,7 @@
     "better-near-auth": "^0.1.2",
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.4",
+    "effect": "^3.17.9",
     "feed": "^5.1.0",
     "hono": "^4.9.2",
     "pg": "^8.16.3",

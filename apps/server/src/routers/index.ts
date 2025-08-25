@@ -1,23 +1,22 @@
 import { betterFetch } from '@better-fetch/fetch';
 import BunCache from "@samocodes/bun-cache";
+import { TRPCError } from "@trpc/server";
+import { Effect } from "effect";
 import { z } from "zod";
 import {
-  protectedProcedure, publicProcedure,
-  router,
+  publicProcedure,
+  protectedProcedure,
+  router
 } from "../lib/trpc";
-import { CurrentFeedToFeed, Feed } from "../schemas/feed";
+import { CurrentFeedToFeed, Feed, FeedItem } from "../schemas/feed";
+import { addFeedItem, RedisError } from "../lib/redis";
+import { runtime } from "../index";
 
 const cache = new BunCache(false);
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
     return "OK";
-  }),
-  privateData: protectedProcedure.query(({ ctx }) => {
-    return {
-      message: "hello world!",
-      user: ctx.session.user,
-    };
   }),
   getFeeds: publicProcedure
     .output(Feed)
@@ -44,7 +43,7 @@ export const appRouter = router({
           },
           {
             title: "USA News",
-            id: "usa", 
+            id: "usa",
             link: "/usa",
             date: new Date().toISOString(),
             description: "US political and economic updates",
@@ -54,7 +53,7 @@ export const appRouter = router({
           {
             title: "DeSci Feed",
             id: "desci",
-            link: "/desci", 
+            link: "/desci",
             date: new Date().toISOString(),
             description: "Decentralized science developments and research",
             content: "Latest developments in decentralized science, research funding, and scientific innovation.",
@@ -64,7 +63,7 @@ export const appRouter = router({
             title: "Solana Updates",
             id: "solana",
             link: "/solana",
-            date: new Date().toISOString(), 
+            date: new Date().toISOString(),
             description: "Solana ecosystem news and developments",
             content: "News, updates, and developments from the Solana blockchain ecosystem.",
             guid: "solana",
@@ -74,7 +73,7 @@ export const appRouter = router({
             id: "near",
             link: "/near",
             date: new Date().toISOString(),
-            description: "NEAR blockchain updates and ecosystem news", 
+            description: "NEAR blockchain updates and ecosystem news",
             content: "Latest updates from the NEAR Protocol blockchain and its growing ecosystem.",
             guid: "near",
           },
@@ -131,7 +130,7 @@ export const appRouter = router({
       return transformedData;
     }),
   getFeedItem: publicProcedure
-    .input(z.object({ 
+    .input(z.object({
       feedId: z.string(),
       itemId: z.string()
     }))
@@ -141,11 +140,11 @@ export const appRouter = router({
     }))
     .query(async ({ input }) => {
       const { feedId, itemId } = input;
-      
+
       // First get the feed data
       const feedCacheKey = `rss-feed-${feedId}`;
       let feedData: Feed;
-      
+
       const cached = cache.get(feedCacheKey);
       if (cached) {
         feedData = JSON.parse(cached as string);
@@ -163,17 +162,17 @@ export const appRouter = router({
       }
 
       // Normalize the itemId for comparison (same logic TanStack Router would use)
-      const normalizeId = (str: string) => 
+      const normalizeId = (str: string) =>
         str.toLowerCase()
-           .replace(/[^a-z0-9\s-]/g, '')
-           .replace(/\s+/g, '-')
-           .replace(/-+/g, '-')
-           .replace(/^-|-$/g, '');
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
 
       const normalizedItemId = normalizeId(itemId);
 
       // Find the item by comparing normalized titles
-      const item = feedData.items.find(item => 
+      const item = feedData.items.find(item =>
         normalizeId(item.title) === normalizedItemId
       );
 
@@ -181,6 +180,46 @@ export const appRouter = router({
         item: item || null,
         feedTitle: feedData.options.title
       };
+    }),
+  addFeedItem: protectedProcedure
+    .input(z.object({
+      feedId: z.string().min(1, "Feed ID is required"),
+      item: FeedItem.omit({ id: true }) // ID will be generated server-side
+    }))
+    .output(z.object({
+      success: z.boolean(),
+      itemId: z.string(),
+      message: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { feedId, item } = input;
+
+      try {
+        const itemWithId = { ...item, id: crypto.randomUUID() };
+        
+        const itemId = await runtime.runPromise(
+          addFeedItem(feedId, itemWithId)
+        );
+
+        return {
+          success: true,
+          itemId,
+          message: `Item successfully added to feed ${feedId}`,
+        };
+      } catch (error) {
+        if (error instanceof RedisError) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: error.message,
+            cause: error.cause,
+          });
+        }
+        
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to add item to feed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        });
+      }
     })
 });
 

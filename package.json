@@ -3,8 +3,7 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*",
-    "plugin"
+    "packages/*"
   ],
   "scripts": {
     "dev": "turbo dev",

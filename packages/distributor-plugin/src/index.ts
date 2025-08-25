@@ -23,7 +23,7 @@ export class RssPlugin
       typeof RssConfigSchema
     >
 {
-  readonly id = "@rss/plugin" as const;
+  readonly id = "@rss/add-item-plugin" as const;
   readonly type = "transformer" as const;
   readonly inputSchema = RssInputSchema;
   readonly outputSchema = RssOutputSchema;
@@ -102,25 +102,28 @@ export class RssPlugin
         );
       }
 
-      yield* logger.logDebug("Executing Rss social feedback workflow", {
+      yield* logger.logDebug("Executing add item to feed workflow", {
         pluginId: self.id,
+        feedId: input.feedId,
+        itemTitle: input.item.title,
       });
 
       return yield* Effect.tryPromise({
         try: async () => {
+          if (!self.client) {
+            throw new Error("Client not initialized");
+          }
+
+          // Call the addFeedItem method on the client (passthrough)
+          const result = await self.client.addFeedItem(input.feedId, input.item);
           
-          return {
-            success: true,
-            data: {
-              
-            },
-          } as RssOutput;
+          return result;
         },
         catch: (error) => {
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
           return new PluginExecutionError(
-            `Social feedback workflow failed: ${errorMessage}`,
+            `Add item to feed workflow failed: ${errorMessage}`,
             true,
           );
         },

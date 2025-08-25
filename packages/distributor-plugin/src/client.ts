@@ -1,6 +1,7 @@
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
-import type { AppRouter } from "../../apps/server/src/routers";
+import type { AppRouter } from "../../../apps/server/src/routers";
 import { type RssAuthClient, createRssAuthClient } from "./auth-client";
+import type { FeedItem } from "../../../apps/server/src/schemas/feed";
 
 export class RssClient {
   private trpcClient: ReturnType<typeof createTRPCClient<AppRouter>>;
@@ -23,6 +24,17 @@ export class RssClient {
 
   async healthCheck(): Promise<string> {
     return this.trpcClient.healthCheck.query();
+  }
+
+  async addFeedItem(feedId: string, item: Omit<FeedItem, 'id'>): Promise<{
+    success: boolean;
+    itemId: string;
+    message?: string;
+  }> {
+    return this.trpcClient.addFeedItem.mutate({
+      feedId,
+      item,
+    });
   }
 
 }
