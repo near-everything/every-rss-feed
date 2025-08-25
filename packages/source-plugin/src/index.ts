@@ -25,7 +25,7 @@ export class RssPlugin
       typeof RssConfigSchema
     >
 {
-  readonly id = "@rss/plugin" as const;
+  readonly id = "@curatedotfun/rss-source" as const;
   readonly type = "source" as const;
   readonly inputSchema = RssInputSchema;
   readonly outputSchema = RssOutputSchema;
@@ -113,10 +113,10 @@ export class RssPlugin
       });
 
       const state: RssState = {
-        processedItemIds: lastProcessedState?.processedItemIds || [],
-        latestProcessedId: lastProcessedState?.latestProcessedId,
-        lastPollTime: lastProcessedState?.lastPollTime,
-        currentAsyncJob: lastProcessedState?.currentAsyncJob || null,
+        processedItemIds: lastProcessedState?.data?.processedItemIds || [],
+        latestProcessedId: lastProcessedState?.data?.latestProcessedId,
+        lastPollTime: lastProcessedState?.data?.lastPollTime,
+        currentAsyncJob: lastProcessedState?.data?.currentAsyncJob || null,
       };
 
       // Handle directory request first if needed

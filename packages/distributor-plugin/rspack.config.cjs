@@ -18,7 +18,7 @@ module.exports = {
   devServer: {
     static: path.join(__dirname, "dist"),
     hot: true,
-    port: 3000, // CHANGE THIS PORT - Use unique port for your plugin
+    port: 3016,
     devMiddleware: {
       writeToDisk: true,
     },

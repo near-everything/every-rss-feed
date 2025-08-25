@@ -23,7 +23,7 @@ export class RssPlugin
       typeof RssConfigSchema
     >
 {
-  readonly id = "@rss/add-item-plugin" as const;
+  readonly id = "@curatedotfun/rss-distributor" as const;
   readonly type = "transformer" as const;
   readonly inputSchema = RssInputSchema;
   readonly outputSchema = RssOutputSchema;
