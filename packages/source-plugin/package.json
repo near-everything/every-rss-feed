@@ -1,7 +1,7 @@
 {
-  "name": "@curatedotfun/rss",
+  "name": "@curatedotfun/rss-source",
   "version": "0.0.1",
-  "description": "Plugin for RSS",
+  "description": "Plugin for RSS source",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
