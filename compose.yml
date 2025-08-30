@@ -19,5 +19,20 @@ services:
       retries: 5
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: every-news-feed-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - every-news-feed_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
   every-news-feed_postgres_data:
+  every-news-feed_redis_data:

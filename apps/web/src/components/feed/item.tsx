@@ -38,10 +38,10 @@ export function Item({ data, index }: ItemProps) {
   return (
     <article className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Image */}
-      {getImageUrl(data.image) && (
+      {getImageUrl(data?.image) && (
         <div className="aspect-video w-full overflow-hidden">
           <img
-            src={getImageUrl(data.image)!}
+            src={getImageUrl(data?.image)!}
             alt={data.title}
             className="w-full h-full object-cover"
             loading="lazy"
