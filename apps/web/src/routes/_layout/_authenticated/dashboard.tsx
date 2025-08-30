@@ -1,13 +1,9 @@
 import { NearProfile } from "@/components/near-profile";
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_layout/_authenticated/dashboard")({
   loader: ({ context }) => {
-    const queryOptions = context.trpc.privateData.queryOptions();
-
     return {
-      trpc: context.queryClient.ensureQueryData(queryOptions),
       session: context.session,
     };
   },
@@ -16,8 +12,6 @@ export const Route = createFileRoute("/_layout/_authenticated/dashboard")({
 
 function RouteComponent() {
   const { session } = Route.useLoaderData();
-  const { trpc } = Route.useRouteContext();
-  const privateData = useQuery(trpc.privateData.queryOptions());
 
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
@@ -37,17 +31,7 @@ function RouteComponent() {
         </div>
 
         {/* Main Content Area - Full width on mobile, 2 columns on desktop */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6 order-2 lg:order-2">
-          {/* Private Data Card */}
-          <div className="bg-card rounded-lg border p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
-              Private Data
-            </h2>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              {privateData.data?.message ?? "Failed to Load"}
-            </p>
-          </div>
-        </div>
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6 order-2 lg:order-2"></div>
       </div>
     </div>
   );
