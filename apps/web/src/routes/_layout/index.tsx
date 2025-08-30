@@ -68,7 +68,7 @@ function HomeComponent() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {feeds.map((feed) => (
             <div
-              key={feed.id}
+              key={feed.options.id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow"
             >
               {feed.options.image && (
@@ -93,7 +93,7 @@ function HomeComponent() {
                   </span>
                   <Link
                     to="/$feedId"
-                    params={{ feedId: feed.id! }}
+                    params={{ feedId: feed.options.id }}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
                   >
                     View Feed

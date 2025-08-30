@@ -1,8 +1,8 @@
 import { authClient } from "@/lib/auth-client";
 import { useEffect, useState } from "react";
 import { Skeleton } from "./ui/skeleton";
-import type { Profile } from "better-near-auth";
-
+import type { Profile } from "node_modules/better-near-auth/src/types";
+// TODO: need better-near-auth to export types
 interface NearProfileProps {
   accountId?: string;
   variant?: "badge" | "card";
