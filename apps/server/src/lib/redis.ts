@@ -1,11 +1,11 @@
-import { Effect, Layer, Context, Data } from "effect";
-import { redis, RedisClient } from "bun";
-import { FeedItem, Feed } from "../schemas/feed";
+import { RedisClient } from "bun";
+import { Context, Data, Effect, Layer } from "effect";
+import { Feed, FeedItem } from "../schemas/feed";
 
 export class RedisError extends Data.TaggedError("RedisError")<{
   message: string;
   cause?: unknown;
-}> {}
+}> { }
 
 export class RedisService extends Context.Tag("RedisService")<
   RedisService,
@@ -19,7 +19,7 @@ export class RedisService extends Context.Tag("RedisService")<
     readonly getFeedItem: (feedId: string, itemId: string) => Effect.Effect<FeedItem | null, RedisError>;
     readonly disconnect: () => Effect.Effect<void, never>;
   }
->() {}
+>() { }
 
 export const RedisServiceLive = Layer.effect(
   RedisService,
@@ -32,38 +32,38 @@ export const RedisServiceLive = Layer.effect(
       Effect.tryPromise({
         try: async () => {
           const feedId = feed.options.id;
-          
+
           // Check if feed exists to determine if this is an update
           const existingFeed = await client.get(`feed:${feedId}`);
-          
+
           if (existingFeed) {
             // Update existing feed: clear old items first
             const oldItemIds = await client.send("LRANGE", [`feed:${feedId}:items`, "0", "-1"]) as string[];
-            
+
             // Delete old items
             for (const itemId of oldItemIds) {
               await client.del(`item:${itemId}`);
             }
-            
+
             // Clear the items list
             await client.del(`feed:${feedId}:items`);
           }
-          
+
           // Store the complete feed (overwrites if exists)
           await client.set(`feed:${feedId}`, JSON.stringify(feed));
-          
+
           // Add to feeds directory (SADD handles duplicates)
           await client.send("SADD", ["feeds:directory", feedId]);
-          
+
           // Store each item individually and maintain item list
           for (const item of feed.items) {
             const itemId = item.id || crypto.randomUUID();
             const itemWithId = { ...item, id: itemId };
-            
+
             await client.set(`item:${itemId}`, JSON.stringify(itemWithId));
             await client.send("LPUSH", [`feed:${feedId}:items`, itemId]);
           }
-          
+
           return feedId;
         },
         catch: (error) => new RedisError({
@@ -90,14 +90,14 @@ export const RedisServiceLive = Layer.effect(
           // Get all feed IDs from directory
           const feedIds = await client.send("SMEMBERS", ["feeds:directory"]) as string[];
           const feeds: Feed[] = [];
-          
+
           for (const feedId of feedIds) {
             const feedData = await client.get(`feed:${feedId}`);
             if (feedData) {
               feeds.push(JSON.parse(feedData));
             }
           }
-          
+
           return feeds;
         },
         catch: (error) => new RedisError({
@@ -111,18 +111,18 @@ export const RedisServiceLive = Layer.effect(
         try: async () => {
           // Get all item IDs for this feed
           const itemIds = await client.send("LRANGE", [`feed:${feedId}:items`, "0", "-1"]) as string[];
-          
+
           // Delete all items
           for (const itemId of itemIds) {
             await client.del(`item:${itemId}`);
           }
-          
+
           // Delete feed items list
           await client.del(`feed:${feedId}:items`);
-          
+
           // Delete feed itself
           await client.del(`feed:${feedId}`);
-          
+
           // Remove from feeds directory
           await client.send("SREM", ["feeds:directory", feedId]);
         },
@@ -137,13 +137,13 @@ export const RedisServiceLive = Layer.effect(
         try: async () => {
           const itemId = item.id || crypto.randomUUID();
           const itemWithId = { ...item, id: itemId };
-          
+
           // Store the item
           await client.set(`item:${itemId}`, JSON.stringify(itemWithId));
-          
+
           // Add to feed's item list
           await client.send("LPUSH", [`feed:${feedId}:items`, itemId]);
-          
+
           return itemId;
         },
         catch: (error) => new RedisError({
@@ -157,14 +157,14 @@ export const RedisServiceLive = Layer.effect(
         try: async () => {
           const itemIds = await client.send("LRANGE", [`feed:${feedId}:items`, "0", "-1"]) as string[];
           const items: FeedItem[] = [];
-          
+
           for (const itemId of itemIds) {
             const itemData = await client.get(`item:${itemId}`);
             if (itemData) {
               items.push(JSON.parse(itemData));
             }
           }
-          
+
           return items;
         },
         catch: (error) => new RedisError({

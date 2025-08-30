@@ -4,7 +4,7 @@ import {
   type Plugin,
   PluginExecutionError,
   PluginLoggerTag,
-} from "@usersdotfun/core-sdk";
+} from "every-plugin";
 import { RssClient } from "./client";
 import {
   type RssConfig,

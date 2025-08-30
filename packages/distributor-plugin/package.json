@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@trpc/client": "^11.5.0",
-    "@usersdotfun/core-sdk": "link:@usersdotfun/core-sdk",
+    "every-plugin": "0.0.2",
     "better-auth": "^1.3.7"
   }
 }

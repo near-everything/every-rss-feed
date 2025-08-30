@@ -15,7 +15,7 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
   plugins: [
     siwn({
-      recipient: "curate-news-feed.near"
+      recipient: "every-news-feed.near"
     }),
   ],
   session: {

@@ -99,10 +99,10 @@ function ItemPage() {
       {/* Article */}
       <article className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Hero Image */}
-        {getImageUrl(item.image) && (
+        {getImageUrl(item?.image) && (
           <div className="aspect-video w-full overflow-hidden">
             <img
-              src={getImageUrl(item.image)!}
+              src={getImageUrl(item?.image)!}
               alt={item.title}
               className="w-full h-full object-cover"
             />

@@ -3,7 +3,7 @@ import {
   createInputSchema,
   createOutputSchema,
   z,
-} from "@usersdotfun/core-sdk";
+} from "every-plugin";
 import { FeedItem } from "../../../../apps/server/src/schemas/feed";
 
 // Config schema with variables and secrets

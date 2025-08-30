@@ -21,11 +21,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
-        title: "curate-news-feed",
+        title: "every-news-feed",
       },
       {
         name: "description",
-        content: "curate-news-feed is a web application",
+        content: "every-news-feed is a web application",
       },
     ],
     links: [

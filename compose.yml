@@ -1,17 +1,17 @@
-name: curate-news-feed
+name: every-news-feed
 
 services:
   postgres:
     image: postgres
-    container_name: curate-news-feed-postgres
+    container_name: every-news-feed-postgres
     environment:
-      POSTGRES_DB: curate-news-feed
+      POSTGRES_DB: every-news-feed
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
-      - curate-news-feed_postgres_data:/var/lib/postgresql/data
+      - every-news-feed_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -21,11 +21,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: curate-news-feed-redis
+    container_name: every-news-feed-redis
     ports:
       - "6379:6379"
     volumes:
-      - curate-news-feed_redis_data:/data
+      - every-news-feed_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -34,5 +34,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  curate-news-feed_postgres_data:
-  curate-news-feed_redis_data:
+  every-news-feed_postgres_data:
+  every-news-feed_redis_data:

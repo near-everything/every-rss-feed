@@ -1,5 +1,5 @@
 {
-  "name": "curate-news-feeds",
+  "name": "every-news-feeds",
   "private": true,
   "workspaces": [
     "apps/*",

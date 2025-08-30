@@ -149,7 +149,7 @@ plugin/
 
 - `@trpc/client`: Type-safe API client
 - `better-auth`: Authentication and organization management
-- `@usersdotfun/core-sdk`: Plugin framework
+- `every-plugin`: Plugin framework
 - `zod`: Schema validation
 
 ### TODOs

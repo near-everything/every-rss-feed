@@ -4,7 +4,7 @@ import {
   createSourceOutputSchema,
   AsyncJobProgressSchema,
   z,
-} from "@usersdotfun/core-sdk";
+} from "every-plugin";
 
 // Config schema with variables and secrets
 export const RssConfigSchema = createConfigSchema(

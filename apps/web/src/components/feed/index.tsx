@@ -23,7 +23,7 @@ export function Feed({ data }: FeedProps) {
       {/* Feed Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-start gap-4">
-          {data.options.image && (
+          {data.options?.image && (
             <img
               src={data.options.image}
               alt={data.options.title}
