@@ -62,11 +62,8 @@ function ItemPage() {
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-          Feed Item Data Structure
+          Feed Item
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          This shows the exact data structure received from the getFeedItem TRPC endpoint:
-        </p>
         <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-auto text-sm">
           <code>{JSON.stringify(data, null, 2)}</code>
         </pre>

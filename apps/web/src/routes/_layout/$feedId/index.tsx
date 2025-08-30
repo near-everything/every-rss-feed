@@ -1,5 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { authClient } from "@/lib/auth-client";
+import { generateFakeFeedItem } from "@/utils/faker-data";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { trpcClient } from "@/utils/trpc";
 
 export const Route = createFileRoute("/_layout/$feedId/")({
   component: FeedPage,
@@ -11,7 +16,8 @@ export const Route = createFileRoute("/_layout/$feedId/")({
 
 function FeedPage() {
   const { feedId } = Route.useParams();
-  const { trpc } = Route.useRouteContext();
+  const { trpc, queryClient } = Route.useRouteContext();
+  const navigate = useNavigate();
 
   const initialData = Route.useLoaderData();
 
@@ -20,6 +26,36 @@ function FeedPage() {
   const { data, error } = useQuery({
     ...queryOptions,
     initialData: initialData,
+  });
+
+  const { data: session } = authClient.useSession();
+
+  const addFeedItemMutation = useMutation({
+    mutationFn: async () => {
+      const fakeItem = generateFakeFeedItem();
+      return trpcClient.addFeedItem.mutate({ feedId, item: fakeItem });
+    },
+    onSuccess: () => {
+      toast.success('Feed item added successfully!');
+      queryClient.invalidateQueries({ queryKey: queryOptions.queryKey });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to add feed item: ${error.message}`);
+    },
+  });
+
+  const deleteFeedMutation = useMutation({
+    mutationFn: async () => {
+      return trpcClient.deleteFeed.mutate({ feedId });
+    },
+    onSuccess: () => {
+      toast.success('Feed deleted successfully!');
+      queryClient.invalidateQueries({ queryKey: trpc.getFeeds.queryOptions().queryKey });
+      navigate({ to: '/' });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to delete feed: ${error.message}`);
+    },
   });
 
   if (error) {
@@ -41,7 +77,7 @@ function FeedPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-4xl space-y-6">
       <div className="mb-6">
         <nav className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400">
@@ -52,16 +88,67 @@ function FeedPage() {
         </nav>
       </div>
 
+      {/* Feed Actions */}
+      {session && (
+        <div className="flex gap-4">
+          <Button
+            onClick={() => addFeedItemMutation.mutate()}
+            disabled={addFeedItemMutation.isPending}
+          >
+            {addFeedItemMutation.isPending ? 'Adding...' : 'Add Feed Item'}
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => deleteFeedMutation.mutate()}
+            disabled={deleteFeedMutation.isPending}
+          >
+            {deleteFeedMutation.isPending ? 'Deleting...' : 'Delete Feed'}
+          </Button>
+        </div>
+      )}
+
+      {/* Full Feed Data */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-          Feed Data Structure
+          Feed
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          This shows the exact data structure received from the getFeed TRPC endpoint:
-        </p>
         <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-auto text-sm">
-          <code>{JSON.stringify(data, null, 2)}</code>
+          <code>{JSON.stringify(data.options, null, 2)}</code>
         </pre>
+      </div>
+
+      {/* Feed Items */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          Items ({data.items.length})
+        </h2>
+        {data.items.map((item) => (
+          <div
+            key={item.id}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Feed Item
+              </h3>
+              {item.id && (
+                <Link
+                  to="/$feedId/$itemId"
+                  params={{ feedId, itemId: item.id }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  View Item
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              )}
+            </div>
+            <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-auto text-sm">
+              <code>{JSON.stringify(item, null, 2)}</code>
+            </pre>
+          </div>
+        ))}
       </div>
     </div>
   );
