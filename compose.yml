@@ -1,17 +1,17 @@
-name: every-news-feed
+name: every-rss-feed
 
 services:
   postgres:
     image: postgres
-    container_name: every-news-feed-postgres
+    container_name: every-rss-feed-postgres
     environment:
-      POSTGRES_DB: every-news-feed
+      POSTGRES_DB: every-rss-feed
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
-      - every-news-feed_postgres_data:/var/lib/postgresql/data
+      - every-rss-feed_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -21,11 +21,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: every-news-feed-redis
+    container_name: every-rss-feed-redis
     ports:
       - "6379:6379"
     volumes:
-      - every-news-feed_redis_data:/data
+      - every-rss-feed_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -34,5 +34,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  every-news-feed_postgres_data:
-  every-news-feed_redis_data:
+  every-rss-feed_postgres_data:
+  every-rss-feed_redis_data:

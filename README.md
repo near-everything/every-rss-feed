@@ -1,4 +1,4 @@
-# every-news-feed
+# every-rss-feed
 
 This is a client app for reading curated RSS feeds.
 
