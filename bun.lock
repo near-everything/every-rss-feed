@@ -78,7 +78,7 @@
       "dependencies": {
         "@trpc/client": "^11.5.0",
         "better-auth": "^1.3.7",
-        "every-plugin": "0.0.2",
+        "every-plugin": "0.0.5",
       },
       "devDependencies": {
         "@curatedotfun/utils": "^0.0.2",
@@ -98,7 +98,7 @@
       "dependencies": {
         "@trpc/client": "^11.5.0",
         "better-auth": "^1.3.7",
-        "every-plugin": "0.0.2",
+        "every-plugin": "0.0.5",
       },
       "devDependencies": {
         "@curatedotfun/utils": "^0.0.2",
@@ -1012,7 +1012,7 @@
 
     "events": ["events@3.3.0", "", {}, "sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q=="],
 
-    "every-plugin": ["every-plugin@0.0.2", "", { "dependencies": { "ajv": "^8.17.1" }, "peerDependencies": { "effect": ">=3.17.0 <4.0.0", "zod": ">=4.0.0" } }, "sha512-AKIydAsC0Osa71mFKP0CbEnpL29p3pZvk6YPDmgfTOskT6jd+QuMMNVDBzq9WWplNTs7Ev89+F1UrBo5s8Dmuw=="],
+    "every-plugin": ["every-plugin@0.0.5", "", { "dependencies": { "ajv": "^8.17.1" }, "peerDependencies": { "effect": ">=3.17.0 <4.0.0", "zod": ">=4.0.0" } }, "sha512-R9cucF2zLOz/7mpQFDkCTXB8jzRN49pk/OG/4SW4zrumyNGvrTjDPJaVtF42AAzj27Gwk1sjdnJLQY7lcC7tcg=="],
 
     "exit-hook": ["exit-hook@4.0.0", "", {}, "sha512-Fqs7ChZm72y40wKjOFXBKg7nJZvQJmewP5/7LtePDdnah/+FH9Hp5sgMujSCMPXlxOAW2//1jrW9pnsY7o20vQ=="],
 

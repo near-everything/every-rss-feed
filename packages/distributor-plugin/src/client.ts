@@ -26,6 +26,14 @@ export class RssClient {
     return this.trpcClient.healthCheck.query();
   }
 
+  async getFeed(feedId: string) {
+    return this.trpcClient.getFeed.query({ feedId });
+  }
+
+  async addFeed(feed: any) {
+    return this.trpcClient.addFeed.mutate(feed);
+  }
+
   async addFeedItem(feedId: string, item: Omit<FeedItem, 'id'>): Promise<{
     success: boolean;
     itemId: string;

@@ -5,9 +5,10 @@ import {
   AsyncJobProgressSchema,
   z,
 } from "every-plugin";
+import { Feed, FeedItem } from "../../../../apps/server/src/schemas/feed";
 
 // Config schema with variables and secrets
-export const RssConfigSchema = createConfigSchema(
+export const RssSourceConfigSchema = createConfigSchema(
   // Variables (non-sensitive config)
   z.object({
     baseUrl: z.url().default("http://localhost:1337"),
@@ -20,52 +21,76 @@ export const RssConfigSchema = createConfigSchema(
 );
 
 // State schema for incremental processing
-export const RssStateSchema = z.object({
+export const RssSourceStateSchema = z.object({
   latestProcessedId: z.string().optional(),
   processedItemIds: z.array(z.string()).default([]),
   lastPollTime: z.string().datetime().optional(),
   currentAsyncJob: AsyncJobProgressSchema.nullable().optional(),
 });
 
-// Search options schema - clean and focused
-export const RssSearchOptionsSchema = z.object({
-  // Flexible feed selection
-  feedIds: z.array(z.string()).optional(), // Multiple feeds
-  feedId: z.string().optional(), // Single feed (backwards compatibility)
+// Operation-based discriminated union for cleaner interfaces
+export const RssOperationSchema = z.discriminatedUnion("operation", [
+  // Get items from specific feeds (incremental processing)
+  z.object({
+    operation: z.literal("getFeedItems"),
+    feedIds: z.array(z.string()).min(1, "At least one feed ID required"),
+    limit: z.number().min(1).max(1000).default(100),
+    forceRefresh: z.boolean().default(false),
+  }),
   
-  // Flexible item selection for specific queries
-  itemIds: z.array(z.string()).optional(), // Query specific items
-  itemId: z.string().optional(), // Single item (backwards compatibility)
+  // Get a specific item from a feed
+  z.object({
+    operation: z.literal("getFeedItem"),
+    feedId: z.string().min(1, "Feed ID is required"),
+    itemId: z.string().min(1, "Item ID is required"),
+  }),
   
-  // Pagination & control
-  limit: z.number().min(1).max(1000).default(100),
-  forceRefresh: z.boolean().default(false),
-  includeFeedDirectory: z.boolean().default(false), // Get available feeds list
-});
+  // Get all items across all feeds (cross-feed aggregation)
+  z.object({
+    operation: z.literal("getAllItems"),
+    limit: z.number().min(1).max(1000).default(100),
+    category: z.string().optional(), // Filter by category
+    tag: z.string().optional(), // Filter by tag
+    forceRefresh: z.boolean().default(false),
+  }),
+  
+  // Get trending items (time-window based)
+  z.object({
+    operation: z.literal("getTrending"),
+    timeWindow: z.enum(["1h", "24h", "7d", "30d"]).default("24h"),
+    feedId: z.string().optional(), // Specific feed or all feeds
+    limit: z.number().min(1).max(100).default(20),
+  }),
+  
+  // Get items by category across feeds
+  z.object({
+    operation: z.literal("getByCategory"),
+    category: z.string().min(1, "Category is required"),
+    limit: z.number().min(1).max(1000).default(100),
+  }),
+  
+  // Get statistics
+  z.object({
+    operation: z.literal("getStats"),
+    feedId: z.string().optional(), // Specific feed or all feeds
+  }),
+]);
 
-// Input schema using source plugin pattern
-export const RssInputSchema = createSourceInputSchema(
-  RssSearchOptionsSchema,
-  RssStateSchema
+// Input schema using operation-based approach
+export const RssSourceInputSchema = createSourceInputSchema(
+  RssOperationSchema,
+  RssSourceStateSchema
 );
 
-// Output schema using source plugin pattern
-export const RssOutputSchema = createSourceOutputSchema(
-  z.object({
-    items: z.array(z.any()), // FeedItem[] from server schema
-    feeds: z.array(z.any()).optional(), // Feed[] when includeFeedDirectory=true
-    stats: z.object({
-      totalItems: z.number(),
-      newItems: z.number(),
-      processedFeeds: z.number(),
-    }),
-  }),
-  RssStateSchema
+// Output schema with operation-specific data
+export const RssSourceOutputSchema = createSourceOutputSchema(
+  FeedItem,
+  RssSourceStateSchema
 );
 
 // Derived types
-export type RssConfig = z.infer<typeof RssConfigSchema>;
-export type RssInput = z.infer<typeof RssInputSchema>;
-export type RssOutput = z.infer<typeof RssOutputSchema>;
-export type RssState = z.infer<typeof RssStateSchema>;
-export type RssSearchOptions = z.infer<typeof RssSearchOptionsSchema>;
+export type RssSourceConfig = z.infer<typeof RssSourceConfigSchema>;
+export type RssSourceInput = z.infer<typeof RssSourceInputSchema>;
+export type RssSourceOutput = z.infer<typeof RssSourceOutputSchema>;
+export type RssSourceState = z.infer<typeof RssSourceStateSchema>;
+export type RssOperation = z.infer<typeof RssOperationSchema>;

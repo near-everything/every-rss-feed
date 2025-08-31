@@ -4,38 +4,56 @@ import {
   type Plugin,
   PluginExecutionError,
   PluginLoggerTag,
+  PluginSourceItem,
 } from "every-plugin";
 import { RssClient } from "./client";
 import {
-  type RssConfig,
-  RssConfigSchema,
-  type RssInput,
-  RssInputSchema,
-  type RssOutput,
-  RssOutputSchema,
-  type RssState,
-  type RssSearchOptions,
+  type RssSourceConfig,
+  RssSourceConfigSchema,
+  type RssSourceInput,
+  RssSourceInputSchema,
+  type RssSourceOutput,
+  RssSourceOutputSchema,
+  type RssSourceState,
+  type RssOperation,
 } from "./schemas";
+import type { FeedItem } from "../../../apps/server/src/schemas/feed";
 
-export class RssPlugin
+export class RssSourcePlugin
   implements
     Plugin<
-      typeof RssInputSchema,
-      typeof RssOutputSchema,
-      typeof RssConfigSchema
+      typeof RssSourceInputSchema,
+      typeof RssSourceOutputSchema,
+      typeof RssSourceConfigSchema
     >
 {
   readonly id = "@curatedotfun/rss-source" as const;
   readonly type = "source" as const;
-  readonly inputSchema = RssInputSchema;
-  readonly outputSchema = RssOutputSchema;
-  readonly configSchema = RssConfigSchema;
+  readonly inputSchema = RssSourceInputSchema;
+  readonly outputSchema = RssSourceOutputSchema;
+  readonly configSchema = RssSourceConfigSchema;
 
-  private config: RssConfig | null = null;
+  private config: RssSourceConfig | null = null;
   private client: RssClient | null = null;
 
+  private transformFeedItemToSourceItem(item: FeedItem): PluginSourceItem<FeedItem> {
+    return {
+      externalId: item.guid || item.id || item.link,
+      content: item.content || item.description || item.title,
+      contentType: 'feed',
+      createdAt: item.date,
+      url: item.link,
+      authors: item.author?.map(author => ({
+        displayName: author.name,
+        username: author.name,
+        url: author.link
+      })),
+      raw: item,
+    };
+  }
+
   initialize(
-    config?: RssConfig,
+    config?: RssSourceConfig,
   ): Effect.Effect<void, ConfigurationError, PluginLoggerTag> {
     const self = this;
     return Effect.gen(function* () {
@@ -76,7 +94,7 @@ export class RssPlugin
           }
           return self.client.healthCheck();
         },
-        catch: (healthCheckError) => {
+        catch: (healthCheckError): ConfigurationError => {
           const error = new ConfigurationError(
             `Health check failed: ${healthCheckError instanceof Error ? healthCheckError.message : "Unknown error"}`,
           );
@@ -92,8 +110,8 @@ export class RssPlugin
   }
 
   execute(
-    input: RssInput,
-  ): Effect.Effect<RssOutput, PluginExecutionError, PluginLoggerTag> {
+    input: RssSourceInput,
+  ): Effect.Effect<RssSourceOutput, PluginExecutionError, PluginLoggerTag> {
     const self = this;
     return Effect.gen(function* () {
       const logger = yield* PluginLoggerTag;
@@ -104,183 +122,83 @@ export class RssPlugin
         );
       }
 
-      const { searchOptions, lastProcessedState } = input;
+      const { searchOptions: operation, lastProcessedState } = input;
 
       yield* logger.logDebug("Executing RSS source plugin", {
         pluginId: self.id,
-        searchOptions,
+        operation: operation.operation,
         stateKeys: Object.keys(lastProcessedState || {}),
       });
 
-      const state: RssState = {
+      const state: RssSourceState = {
         processedItemIds: lastProcessedState?.data?.processedItemIds || [],
         latestProcessedId: lastProcessedState?.data?.latestProcessedId,
         lastPollTime: lastProcessedState?.data?.lastPollTime,
         currentAsyncJob: lastProcessedState?.data?.currentAsyncJob || null,
       };
 
-      // Handle directory request first if needed
-      if (searchOptions.includeFeedDirectory) {
-        return yield* self.executeDirectoryQuery(searchOptions, state, logger);
-      }
+      // Route to appropriate handler based on operation
+      switch (operation.operation) {
+        case "getFeedItems":
+          return yield* self.executeGetFeedItems(operation, state);
+        
+        case "getAllItems":
+          return yield* self.executeGetAllItems(operation, state);
+        
+        case "getTrending":
+          return yield* self.executeGetTrending(operation, state);
+        
+        case "getByCategory":
+          return yield* self.executeGetByCategory(operation, state);
 
-      // Handle specific item queries
-      if (searchOptions.itemIds?.length || searchOptions.itemId) {
-        return yield* self.executeItemQuery(searchOptions, state, logger);
+        default:
+          return yield* Effect.fail(
+            new PluginExecutionError(`Unknown operation: ${(operation as any).operation}`, false),
+          );
       }
-
-      // Default: incremental feed processing
-      return yield* self.executeIncrementalFeedQuery(searchOptions, state, logger);
     });
   }
 
-  private executeDirectoryQuery(
-    query: RssSearchOptions,
-    state: RssState,
-    logger: any,
-  ): Effect.Effect<RssOutput, PluginExecutionError, PluginLoggerTag> {
+  private executeGetFeedItems(
+    operation: Extract<RssOperation, { operation: "getFeedItems" }>,
+    state: RssSourceState,
+  ): Effect.Effect<RssSourceOutput, PluginExecutionError, PluginLoggerTag> {
     const self = this;
     return Effect.gen(function* () {
-      yield* logger.logDebug("Fetching feed directory");
-
-      const directory = yield* Effect.tryPromise({
-        try: () => self.client!.getFeedDirectory(),
-        catch: (error) =>
-          new PluginExecutionError(
-            `Directory fetch failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-            true,
-          ),
+      const logger = yield* PluginLoggerTag;
+      yield* logger.logDebug("Fetching feed items", {
+        feedIds: operation.feedIds,
+        limit: operation.limit,
+        forceRefresh: operation.forceRefresh,
       });
-
-      const now = new Date().toISOString();
-
-      return {
-        success: true,
-        data: {
-          items: [],
-          feeds: [directory],
-          stats: {
-            totalItems: 0,
-            newItems: 0,
-            processedFeeds: 1,
-          },
-          nextLastProcessedState: {
-            ...state,
-            lastPollTime: now,
-            currentAsyncJob: null,
-          },
-        },
-      };
-    });
-  }
-
-  private executeItemQuery(
-    query: RssSearchOptions,
-    state: RssState,
-    logger: any,
-  ): Effect.Effect<RssOutput, PluginExecutionError, PluginLoggerTag> {
-    const self = this;
-    return Effect.gen(function* () {
-      yield* logger.logDebug("Executing specific item query", {
-        itemIds: query.itemIds,
-        itemId: query.itemId,
-        feedIds: query.feedIds,
-        feedId: query.feedId,
-      });
-
-      const itemIds = query.itemIds || (query.itemId ? [query.itemId] : []);
-      const feedIds = query.feedIds || (query.feedId ? [query.feedId] : []);
-
-      if (itemIds.length === 0 || feedIds.length === 0) {
-        yield* Effect.fail(
-          new PluginExecutionError(
-            "Both feedId(s) and itemId(s) are required for item queries",
-            false,
-          ),
-        );
-      }
-
-      const requests: Array<{ feedId: string; itemId: string }> = [];
-      for (const feedId of feedIds) {
-        for (const itemId of itemIds) {
-          requests.push({ feedId, itemId });
-        }
-      }
-
-      const results = yield* Effect.tryPromise({
-        try: () => self.client!.getFeedItems(requests),
-        catch: (error) =>
-          new PluginExecutionError(
-            `Item query failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-            true,
-          ),
-      });
-
-      const items = results
-        .filter((result) => result.item !== null)
-        .map((result) => result.item);
-
-      const now = new Date().toISOString();
-
-      return {
-        success: true,
-        data: {
-          items,
-          stats: {
-            totalItems: items.length,
-            newItems: items.length,
-            processedFeeds: feedIds.length,
-          },
-          nextLastProcessedState: {
-            ...state,
-            lastPollTime: now,
-            currentAsyncJob: null,
-          },
-        },
-      };
-    });
-  }
-
-  private executeIncrementalFeedQuery(
-    query: RssSearchOptions,
-    state: RssState,
-    logger: any,
-  ): Effect.Effect<RssOutput, PluginExecutionError, PluginLoggerTag> {
-    const self = this;
-    return Effect.gen(function* () {
-      yield* logger.logDebug("Executing incremental feed query", {
-        feedIds: query.feedIds,
-        feedId: query.feedId,
-        limit: query.limit,
-        forceRefresh: query.forceRefresh,
-      });
-
-      // Determine target feeds
-      const feedIds = query.feedIds || (query.feedId ? [query.feedId] : ["grants"]);
 
       let allNewItems: any[] = [];
       const updatedProcessedIds = new Set(state.processedItemIds || []);
 
       // Process each feed incrementally
-      for (const feedId of feedIds) {
+      for (const feedId of operation.feedIds) {
         yield* logger.logDebug(`Processing feed: ${feedId}`);
 
         const feedData = yield* Effect.tryPromise({
-          try: () => self.client!.getFeed(feedId),
-          catch: (error) =>
+          try: () => self.client!.getFeedItems(feedId),
+          catch: (error): PluginExecutionError =>
             new PluginExecutionError(
               `Feed fetch failed for ${feedId}: ${error instanceof Error ? error.message : "Unknown error"}`,
               true,
             ),
         });
 
-        // Filter for new items only
-        const newItems = feedData.items
-          .filter((item: any) => {
-            const itemId = item.guid || item.id || item.link;
-            return itemId && !updatedProcessedIds.has(itemId);
-          })
-          .slice(0, query.limit);
+        if (!feedData) continue;
+
+        // Filter for new items only (unless force refresh)
+        const newItems = operation.forceRefresh 
+          ? feedData.slice(0, operation.limit)
+          : feedData
+              .filter((item: any) => {
+                const itemId = item.guid || item.id || item.link;
+                return itemId && !updatedProcessedIds.has(itemId);
+              })
+              .slice(0, operation.limit);
 
         yield* logger.logDebug(`Found ${newItems.length} new items in feed ${feedId}`);
 
@@ -295,8 +213,8 @@ export class RssPlugin
         allNewItems.push(...newItems);
 
         // Respect the overall limit across all feeds
-        if (allNewItems.length >= query.limit) {
-          allNewItems = allNewItems.slice(0, query.limit);
+        if (allNewItems.length >= operation.limit) {
+          allNewItems = allNewItems.slice(0, operation.limit);
           break;
         }
       }
@@ -312,21 +230,19 @@ export class RssPlugin
            state.latestProcessedId)
         : state.latestProcessedId;
 
-      yield* logger.logInfo("Incremental feed query completed", {
+      yield* logger.logInfo("Feed items query completed", {
         totalNewItems: allNewItems.length,
-        processedFeeds: feedIds.length,
+        processedFeeds: operation.feedIds.length,
         totalProcessedItems: processedArray.length,
       });
+
+      // Transform raw FeedItems to expected source plugin format
+      const transformedItems = allNewItems.map((item: FeedItem) => self.transformFeedItemToSourceItem(item));
 
       return {
         success: true,
         data: {
-          items: allNewItems,
-          stats: {
-            totalItems: allNewItems.length,
-            newItems: allNewItems.length,
-            processedFeeds: feedIds.length,
-          },
+          items: transformedItems,
           nextLastProcessedState: {
             latestProcessedId,
             processedItemIds: processedArray,
@@ -335,7 +251,170 @@ export class RssPlugin
           },
         },
       };
-    });
+    }).pipe(
+      Effect.mapError((error) => 
+        error instanceof PluginExecutionError ? error : 
+        new PluginExecutionError(`Feed items execution error: ${error}`, true)
+      )
+    );
+  }
+
+  private executeGetAllItems(
+    operation: Extract<RssOperation, { operation: "getAllItems" }>,
+    state: RssSourceState,
+  ): Effect.Effect<RssSourceOutput, PluginExecutionError, PluginLoggerTag> {
+    const self = this;
+    return Effect.gen(function* () {
+      const logger = yield* PluginLoggerTag;
+      yield* logger.logDebug("Fetching all items across feeds", {
+        limit: operation.limit,
+        category: operation.category,
+        tag: operation.tag,
+        forceRefresh: operation.forceRefresh,
+      });
+
+      let items: any[] = [];
+
+      if (operation.category) {
+        // Get items by category
+        items = yield* Effect.tryPromise({
+          try: () => self.client!.getItemsByCategory(operation.category!, operation.limit),
+          catch: (error): PluginExecutionError =>
+            new PluginExecutionError(
+              `Category items fetch failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+              true,
+            ),
+        });
+      } else {
+        // Get all items across feeds
+        items = yield* Effect.tryPromise({
+          try: () => self.client!.getAllFeedItems(operation.limit),
+          catch: (error): PluginExecutionError =>
+            new PluginExecutionError(
+              `All items fetch failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+              true,
+            ),
+        });
+      }
+
+      const now = new Date().toISOString();
+
+      // Transform raw FeedItems to expected source plugin format
+      const transformedItems = items.map((item: FeedItem) => self.transformFeedItemToSourceItem(item));
+
+      return {
+        success: true,
+        data: {
+          items: transformedItems,
+          nextLastProcessedState: {
+            ...state,
+            lastPollTime: now,
+            currentAsyncJob: null,
+          },
+        },
+      };
+    }).pipe(
+      Effect.mapError((error) => 
+        error instanceof PluginExecutionError ? error : 
+        new PluginExecutionError(`All items execution error: ${error}`, true)
+      )
+    );
+  }
+
+  private executeGetTrending(
+    operation: Extract<RssOperation, { operation: "getTrending" }>,
+    state: RssSourceState,
+  ): Effect.Effect<RssSourceOutput, PluginExecutionError, PluginLoggerTag> {
+    const self = this;
+    return Effect.gen(function* () {
+      const logger = yield* PluginLoggerTag;
+      yield* logger.logDebug("Fetching trending items", {
+        timeWindow: operation.timeWindow,
+        feedId: operation.feedId,
+        limit: operation.limit,
+      });
+
+      const trending = yield* Effect.tryPromise({
+        try: () => operation.feedId 
+          ? self.client!.getFeedTrending(operation.feedId, operation.timeWindow, operation.limit)
+          : self.client!.getTrendingItems(operation.timeWindow, operation.limit),
+        catch: (error): PluginExecutionError =>
+          new PluginExecutionError(
+            `Trending fetch failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            true,
+          ),
+      });
+
+      const now = new Date().toISOString();
+
+      return {
+        success: true,
+        data: {
+          items: [],
+          trending,
+          stats: {
+            totalItems: trending.length,
+            newItems: trending.length,
+            processedFeeds: operation.feedId ? 1 : 0,
+          },
+          nextLastProcessedState: {
+            ...state,
+            lastPollTime: now,
+            currentAsyncJob: null,
+          },
+        },
+      };
+    }).pipe(
+      Effect.mapError((error) => 
+        error instanceof PluginExecutionError ? error : 
+        new PluginExecutionError(`Trending execution error: ${error}`, true)
+      )
+    );
+  }
+
+  private executeGetByCategory(
+    operation: Extract<RssOperation, { operation: "getByCategory" }>,
+    state: RssSourceState,
+  ): Effect.Effect<RssSourceOutput, PluginExecutionError, PluginLoggerTag> {
+    const self = this;
+    return Effect.gen(function* () {
+      const logger = yield* PluginLoggerTag;
+      yield* logger.logDebug("Fetching items by category", {
+        category: operation.category,
+        limit: operation.limit,
+      });
+
+      const items = yield* Effect.tryPromise({
+        try: () => self.client!.getItemsByCategory(operation.category, operation.limit),
+        catch: (error): PluginExecutionError =>
+          new PluginExecutionError(
+            `Category items fetch failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            true,
+          ),
+      });
+
+      const now = new Date().toISOString();
+
+      // Transform raw FeedItems to expected source plugin format
+      const transformedItems = items.map((item: FeedItem) => self.transformFeedItemToSourceItem(item));
+
+      return {
+        success: true,
+        data: {
+          items: transformedItems,
+          nextLastProcessedState: {
+            ...state,
+            lastPollTime: now,
+            currentAsyncJob: null,
+          },
+        },
+      };
+    }).pipe(
+      Effect.mapError((error) => 
+        error instanceof PluginExecutionError ? error : 
+        new PluginExecutionError(`Category execution error: ${error}`, true)
+      )
+    );
   }
 
   shutdown(): Effect.Effect<void, never, PluginLoggerTag> {
@@ -351,4 +430,4 @@ export class RssPlugin
   }
 }
 
-export default RssPlugin;
+export default RssSourcePlugin;
