@@ -1,25 +1,51 @@
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { generateFakeFeed } from "@/utils/faker-data";
-import { trpcClient } from "@/utils/trpc";
+import { orpc, client } from "@/utils/orpc";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useQueryErrorResetBoundary } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_layout/")({
   component: HomeComponent,
   loader: async ({ context }) => {
-    const queryOptions = context.trpc.getFeeds.queryOptions();
+    const queryOptions = context.orpc.rss.getFeeds.queryOptions();
     return context.queryClient.ensureQueryData(queryOptions);
+  },
+  pendingComponent: () => <div>Loading feeds...</div>,
+  errorComponent: ({ error, reset }) => {
+    const router = useRouter();
+    const queryErrorResetBoundary = useQueryErrorResetBoundary();
+
+    useEffect(() => {
+      queryErrorResetBoundary.reset();
+    }, [queryErrorResetBoundary]);
+
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2">Failed to load feeds</h2>
+          <p className="mb-4 text-red-600">{error.message}</p>
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={() => router.invalidate()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   },
 });
 
 function HomeComponent() {
-  const { trpc, queryClient } = Route.useRouteContext();
+  const { orpc, queryClient } = Route.useRouteContext();
 
   const initialData = Route.useLoaderData();
 
-  const queryOptions = trpc.getFeeds.queryOptions();
+  const queryOptions = orpc.rss.getFeeds.queryOptions();
 
   const { data: feeds, error } = useQuery({
     ...queryOptions,
@@ -31,7 +57,8 @@ function HomeComponent() {
   const addFeedMutation = useMutation({
     mutationFn: async () => {
       const fakeFeed = generateFakeFeed();
-      return trpcClient.addFeed.mutate(fakeFeed);
+      await client.rss.addFeed(fakeFeed);
+      return;
     },
     onSuccess: () => {
       toast.success("Feed added successfully!");

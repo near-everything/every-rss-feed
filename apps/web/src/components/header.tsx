@@ -1,16 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { useTRPC } from "@/utils/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { orpc } from "@/utils/orpc";
 
 import { ModeToggle } from "./mode-toggle";
 import { UserMenu } from "./user-menu";
 import { Button } from "./ui/button";
 
 export default function Header() {
-  const trpc = useTRPC();
-  const healthCheck = useQuery(trpc.healthCheck.queryOptions());
+  const healthCheck = useQuery(orpc.healthCheck.queryOptions());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const links = [

@@ -1,21 +1,48 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { orpc } from "@/utils/orpc";
+import { useQueryErrorResetBoundary } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_layout/$feedId/$itemId")({
   component: ItemPage,
   loader: async ({ context, params }) => {
-    const queryOptions = context.trpc.getFeedItem.queryOptions(params);
+    const queryOptions = context.orpc.rss.getFeedItem.queryOptions({ input: params });
     return context.queryClient.ensureQueryData(queryOptions);
+  },
+  pendingComponent: () => <div>Loading item...</div>,
+  errorComponent: ({ error, reset }) => {
+    const router = useRouter();
+    const queryErrorResetBoundary = useQueryErrorResetBoundary();
+
+    useEffect(() => {
+      queryErrorResetBoundary.reset();
+    }, [queryErrorResetBoundary]);
+
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2">Failed to load item</h2>
+          <p className="mb-4 text-red-600">{error.message}</p>
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={() => router.invalidate()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   },
 });
 
 function ItemPage() {
   const { feedId, itemId } = Route.useParams();
-  const { trpc } = Route.useRouteContext();
+  const { orpc } = Route.useRouteContext();
 
   const initialData = Route.useLoaderData();
 
-  const queryOptions = trpc.getFeedItem.queryOptions({ feedId, itemId });
+  const queryOptions = orpc.rss.getFeedItem.queryOptions({ input: { feedId, itemId } });
 
   const { data, error } = useQuery({
     ...queryOptions,

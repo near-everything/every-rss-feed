@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo dev --filter=./apps/*",
+    "dev": "turbo dev",
     "build": "turbo build",
     "check-types": "turbo check-types",
     "dev:native": "turbo -F native dev",

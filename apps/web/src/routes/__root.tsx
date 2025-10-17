@@ -1,7 +1,7 @@
 import Loader from "@/components/loader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import type { queryClient, trpc } from "@/utils/trpc";
+import type { queryClient, orpc } from "@/utils/orpc";
 import {
   HeadContent,
   Outlet,
@@ -12,7 +12,7 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import "../index.css";
 
 export interface RouterAppContext {
-  trpc: typeof trpc;
+  orpc: typeof orpc;
   queryClient: typeof queryClient;
 }
 

@@ -1,27 +1,53 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { generateFakeFeedItem } from "@/utils/faker-data";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { trpcClient } from "@/utils/trpc";
+import { orpc, client } from "@/utils/orpc";
+import { useQueryErrorResetBoundary } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_layout/$feedId/")({
   component: FeedPage,
   loader: async ({ context, params }) => {
-    const queryOptions = context.trpc.getFeed.queryOptions(params);
+    const queryOptions = context.orpc.rss.getFeed.queryOptions({ input: params });
     return context.queryClient.ensureQueryData(queryOptions);
+  },
+  pendingComponent: () => <div>Loading feed...</div>,
+  errorComponent: ({ error, reset }) => {
+    const router = useRouter();
+    const queryErrorResetBoundary = useQueryErrorResetBoundary();
+
+    useEffect(() => {
+      queryErrorResetBoundary.reset();
+    }, [queryErrorResetBoundary]);
+
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2">Failed to load feed</h2>
+          <p className="mb-4 text-red-600">{error.message}</p>
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={() => router.invalidate()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   },
 });
 
 function FeedPage() {
   const { feedId } = Route.useParams();
-  const { trpc, queryClient } = Route.useRouteContext();
+  const { orpc, queryClient } = Route.useRouteContext();
   const navigate = useNavigate();
 
   const initialData = Route.useLoaderData();
 
-  const queryOptions = trpc.getFeed.queryOptions({ feedId });
+  const queryOptions = orpc.rss.getFeed.queryOptions({ input: { feedId } });
 
   const { data, error } = useQuery({
     ...queryOptions,
@@ -33,7 +59,8 @@ function FeedPage() {
   const addFeedItemMutation = useMutation({
     mutationFn: async () => {
       const fakeItem = generateFakeFeedItem();
-      return trpcClient.addFeedItem.mutate({ feedId, item: fakeItem });
+      await client.rss.addFeedItem({ feedId, item: fakeItem });
+      return;
     },
     onSuccess: () => {
       toast.success('Feed item added successfully!');
@@ -46,11 +73,12 @@ function FeedPage() {
 
   const deleteFeedMutation = useMutation({
     mutationFn: async () => {
-      return trpcClient.deleteFeed.mutate({ feedId });
+      await client.rss.deleteFeed({ feedId });
+      return;
     },
     onSuccess: () => {
       toast.success('Feed deleted successfully!');
-      queryClient.invalidateQueries({ queryKey: trpc.getFeeds.queryOptions().queryKey });
+      queryClient.invalidateQueries({ queryKey: orpc.rss.getFeeds.queryOptions().queryKey });
       navigate({ to: '/' });
     },
     onError: (error: any) => {
